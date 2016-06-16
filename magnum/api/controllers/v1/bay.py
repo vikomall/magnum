@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import uuid
+
 from oslo_log import log as logging
 from oslo_utils import timeutils
 import pecan
@@ -53,6 +55,13 @@ class BayPatchType(types.JsonPatchType):
                           '/trust_id', '/trustee_user_name',
                           '/trustee_password', '/trustee_user_id']
         return types.JsonPatchType.internal_attrs() + internal_attrs
+
+
+class BayID(wtypes.Base):
+    uuid = types.uuid
+
+    def __init__(self, uuid):
+        self.uuid = uuid
 
 
 class Bay(base.APIBase):
@@ -318,7 +327,7 @@ class BaysController(rest.RestController):
 
         return bay
 
-    @expose.expose(Bay, body=Bay, status_code=201)
+    @expose.expose(BayID, body=Bay, status_code=202)
     def post(self, bay):
         """Create a new bay.
 
@@ -338,15 +347,14 @@ class BaysController(rest.RestController):
         bay_dict['name'] = name
 
         new_bay = objects.Bay(context, **bay_dict)
-        res_bay = pecan.request.rpcapi.bay_create(new_bay,
-                                                  bay.bay_create_timeout)
 
-        # Set the HTTP Location Header
-        pecan.response.location = link.build_url('bays', res_bay.uuid)
-        return Bay.convert_with_links(res_bay)
+        new_bay.uuid = uuid.uuid4()
+        pecan.request.rpcapi.bay_create(new_bay, bay.bay_create_timeout)
+        return BayID(new_bay.uuid)
 
     @wsme.validate(types.uuid, [BayPatchType])
-    @expose.expose(Bay, types.uuid_or_name, body=[BayPatchType])
+    @expose.expose(BayID, types.uuid_or_name, body=[BayPatchType],
+                   status_code=202)
     def patch(self, bay_ident, patch):
         """Update an existing bay.
 
@@ -379,8 +387,8 @@ class BaysController(rest.RestController):
 
         validate_bay_properties(delta)
 
-        res_bay = pecan.request.rpcapi.bay_update(bay)
-        return Bay.convert_with_links(res_bay)
+        pecan.request.rpcapi.bay_update(bay)
+        return BayID(bay.uuid)
 
     @expose.expose(None, types.uuid_or_name, status_code=204)
     def delete(self, bay_ident):

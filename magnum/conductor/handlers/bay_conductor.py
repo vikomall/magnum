@@ -12,8 +12,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import uuid
-
 from heatclient.common import template_utils
 from heatclient import exc
 from oslo_config import cfg
@@ -125,7 +123,6 @@ class Handler(object):
 
         osc = clients.OpenStackClients(context)
 
-        bay.uuid = uuid.uuid4()
         try:
             # Create trustee/trust and set them to bay
             trust_manager.create_trustee_and_trust(osc, bay)

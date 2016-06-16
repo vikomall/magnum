@@ -16,7 +16,6 @@ import mock
 from oslo_config import cfg
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
-from six.moves.urllib import parse as urlparse
 
 from magnum.api import attr_validator
 from magnum.api.controllers.v1 import bay as api_bay
@@ -232,7 +231,7 @@ class TestPatch(api_base.FunctionalTest):
                                      'value': new_node_count,
                                      'op': 'replace'}])
         self.assertEqual('application/json', response.content_type)
-        self.assertEqual(200, response.status_code)
+        self.assertEqual(202, response.status_code)
 
         response = self.get_json('/bays/%s' % self.bay.uuid)
         self.assertEqual(new_node_count, response['node_count'])
@@ -254,7 +253,7 @@ class TestPatch(api_base.FunctionalTest):
                                      'value': new_node_count,
                                      'op': 'replace'}])
         self.assertEqual('application/json', response.content_type)
-        self.assertEqual(200, response.status_code)
+        self.assertEqual(202, response.status_code)
 
         response = self.get_json('/bays/%s' % self.bay.uuid)
         self.assertEqual(new_node_count, response['node_count'])
@@ -363,7 +362,7 @@ class TestPatch(api_base.FunctionalTest):
         response = self.patch_json('/bays/%s' % self.bay.uuid,
                                    [{'path': '/node_count', 'op': 'remove'}])
         self.assertEqual('application/json', response.content_type)
-        self.assertEqual(200, response.status_code)
+        self.assertEqual(202, response.status_code)
 
         response = self.get_json('/bays/%s' % self.bay.uuid)
         # only allow node_count for bay, and default value is 1
@@ -425,19 +424,8 @@ class TestPost(api_base.FunctionalTest):
 
         response = self.post_json('/bays', bdict)
         self.assertEqual('application/json', response.content_type)
-        self.assertEqual(201, response.status_int)
-        # Check location header
-        self.assertIsNotNone(response.location)
-        expected_location = '/v1/bays/%s' % bdict['uuid']
-        self.assertEqual(expected_location,
-                         urlparse.urlparse(response.location).path)
-        self.assertEqual(bdict['uuid'], response.json['uuid'])
-        self.assertNotIn('updated_at', response.json.keys)
-        return_created_at = timeutils.parse_isotime(
-            response.json['created_at']).replace(tzinfo=None)
-        self.assertEqual(test_time, return_created_at)
-        self.assertEqual(bdict['bay_create_timeout'],
-                         response.json['bay_create_timeout'])
+        self.assertEqual(202, response.status_int)
+        self.assertTrue(uuidutils.is_uuid_like(response.json['uuid']))
 
     def test_create_bay_set_project_id_and_user_id(self):
         bdict = apiutils.bay_post_data()
@@ -456,7 +444,7 @@ class TestPost(api_base.FunctionalTest):
                                wraps=self.dbapi.create_bay) as cc_mock:
             bdict = apiutils.bay_post_data(name='bay_example_A')
             response = self.post_json('/bays', bdict)
-            self.assertEqual(bdict['name'], response.json['name'])
+            self.assertTrue(uuidutils.is_uuid_like(response.json['uuid']))
             cc_mock.assert_called_once_with(mock.ANY)
             # Check that 'id' is not in first arg of positional args
             self.assertNotIn('id', cc_mock.call_args[0][0])
@@ -467,8 +455,8 @@ class TestPost(api_base.FunctionalTest):
 
         response = self.post_json('/bays', bdict)
         self.assertEqual('application/json', response.content_type)
-        self.assertEqual(201, response.status_int)
-        self.assertEqual(bdict['name'], response.json['name'])
+        self.assertEqual(202, response.status_int)
+        self.assertIn('uuid', response.json)
         self.assertTrue(uuidutils.is_uuid_like(response.json['uuid']))
 
     def test_create_bay_no_baymodel_id(self):
@@ -489,7 +477,7 @@ class TestPost(api_base.FunctionalTest):
         bdict = apiutils.bay_post_data(baymodel_id=self.baymodel.name)
         response = self.post_json('/bays', bdict, expect_errors=True)
         self.assertEqual('application/json', response.content_type)
-        self.assertEqual(201, response.status_int)
+        self.assertEqual(202, response.status_int)
 
     def test_create_bay_with_node_count_zero(self):
         bdict = apiutils.bay_post_data()
@@ -512,8 +500,9 @@ class TestPost(api_base.FunctionalTest):
         del bdict['node_count']
         response = self.post_json('/bays', bdict, expect_errors=True)
         self.assertEqual('application/json', response.content_type)
-        self.assertEqual(201, response.status_int)
-        self.assertEqual(1, response.json['node_count'])
+        self.assertEqual(202, response.status_int)
+        response = self.get_json('/bays/%s' % response.json['uuid'])
+        self.assertEqual(1, response['node_count'])
 
     def test_create_bay_with_master_count_zero(self):
         bdict = apiutils.bay_post_data()
@@ -528,8 +517,9 @@ class TestPost(api_base.FunctionalTest):
         del bdict['master_count']
         response = self.post_json('/bays', bdict)
         self.assertEqual('application/json', response.content_type)
-        self.assertEqual(201, response.status_int)
-        self.assertEqual(1, response.json['master_count'])
+        self.assertEqual(202, response.status_int)
+        response = self.get_json('/bays/%s' % response.json['uuid'])
+        self.assertEqual(1, response['master_count'])
 
     def test_create_bay_with_invalid_long_name(self):
         bdict = apiutils.bay_post_data(name='x' * 256)
@@ -550,15 +540,14 @@ class TestPost(api_base.FunctionalTest):
         del bdict['name']
         response = self.post_json('/bays', bdict, expect_errors=True)
         self.assertEqual('application/json', response.content_type)
-        self.assertEqual(201, response.status_int)
-        self.assertIsNotNone(response.json['name'])
+        self.assertEqual(202, response.status_int)
 
     def test_create_bay_with_timeout_none(self):
         bdict = apiutils.bay_post_data()
         bdict['bay_create_timeout'] = None
         response = self.post_json('/bays', bdict, expect_errors=True)
         self.assertEqual('application/json', response.content_type)
-        self.assertEqual(201, response.status_int)
+        self.assertEqual(202, response.status_int)
 
     def test_create_bay_with_no_timeout(self):
         def _simulate_rpc_bay_create(bay, bay_create_timeout):
@@ -570,7 +559,7 @@ class TestPost(api_base.FunctionalTest):
         del bdict['bay_create_timeout']
         response = self.post_json('/bays', bdict, expect_errors=True)
         self.assertEqual('application/json', response.content_type)
-        self.assertEqual(201, response.status_int)
+        self.assertEqual(202, response.status_int)
 
     def test_create_bay_with_timeout_negative(self):
         bdict = apiutils.bay_post_data()
@@ -585,7 +574,7 @@ class TestPost(api_base.FunctionalTest):
         bdict['bay_create_timeout'] = 0
         response = self.post_json('/bays', bdict, expect_errors=True)
         self.assertEqual('application/json', response.content_type)
-        self.assertEqual(201, response.status_int)
+        self.assertEqual(202, response.status_int)
 
     def test_create_bay_with_invalid_flavor(self):
         bdict = apiutils.bay_post_data()
