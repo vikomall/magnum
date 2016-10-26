@@ -11,6 +11,8 @@
     "bay:get": "rule:default",
     "bay:get_all": "rule:default",
     "bay:update": "rule:default",
+    "bay:get_stats": "rule:admin_api",
+    "bay:get_tenant_stats": "rule:admin_api",
 
     "baymodel:create": "rule:default",
     "baymodel:delete": "rule:default",
@@ -26,6 +28,8 @@
     "cluster:get": "rule:default",
     "cluster:get_all": "rule:default",
     "cluster:update": "rule:default",
+    "cluster:get_stats": "rule:admin_api",
+    "cluster:get_tenant_stats": "rule:admin_api",
 
     "clustertemplate:create": "rule:default",
     "clustertemplate:delete": "rule:default",

@@ -46,6 +46,13 @@ class BayID(wtypes.Base):
     def __init__(self, uuid):
         self.uuid = uuid
 
+class ClusterStats(wtypes.Base):
+    clusters = int
+    nodes = int
+
+    def __init__(self, custers=0, nodes=0):
+        self.clusters = clusters
+        self.nodes = nodes
 
 class Bay(base.APIBase):
     """API representation of a bay.
@@ -363,6 +370,33 @@ class BaysController(base.Controller):
 
         return {res.resource_name: res.resource_status_reason
                 for res in failed_resources}
+
+    @policy.enforce_wsgi("bay", "get_tenant_stats")
+    @expose.expose(BayStats, types.uuid_or_name)
+    def get_tenant_cluster_stats(self, tenant_id):
+        """Retrieve given tenant stats.
+
+        :param tenant_id: tenant ID.
+        """
+        context = pecan.request.context
+        bay = api_utils.get_resource('Cluster', bay_ident)
+        policy.enforce(context, 'bay:get', bay,
+                       action='bay:get')
+
+        stats = BayStats(1,2)
+        return stats
+
+    #@policy.enforce_wsgi("bay", "get_stats")
+    @expose.expose(BayStats, int)
+    def get_stats(self, project_id=None):
+        """Retrieve all tenant stats.
+        """
+        context = pecan.request.context
+        policy.enforce(context, 'bay:get_stats', bay,
+                       action='bay:get_stats')
+
+        ret = objects.Cluster.get_stats(pecan.request.context, project_id)
+        return BayStats(ret.clusters, ret.nodes)
 
     @expose.expose(Bay, types.uuid_or_name)
     def get_one(self, bay_ident):

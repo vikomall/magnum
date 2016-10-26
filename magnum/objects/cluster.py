@@ -23,6 +23,12 @@ from magnum.objects import base
 from magnum.objects.cluster_template import ClusterTemplate
 from magnum.objects import fields as m_fields
 
+class ClusterStats(object):
+    clusters = 0
+    nodes = 0
+    def __init__(self, clusters=0, nodes=0):
+        self.clusters = clusters
+        self.nodes = nodes
 
 @base.MagnumObjectRegistry.register
 class Cluster(base.MagnumPersistentObject, base.MagnumObject,
@@ -173,6 +179,15 @@ class Cluster(base.MagnumPersistentObject, base.MagnumObject,
                                                  sort_dir=sort_dir,
                                                  filters=filters)
         return Cluster._from_db_object_list(db_clusters, cls, context)
+
+    @base.remotable_classmethod
+    def get_stats(cls, context, project_id=None):
+        """Return a list of Cluster objects.
+
+        :param context: Security context.
+        :param project_id: project id
+        """
+        return cls.dbapi.get_cluster_stats(context, project_id)
 
     @base.remotable
     def create(self, context=None):
