@@ -24,6 +24,7 @@ from wsme import types as wtypes
 
 from magnum.api.controllers import base as controllers_base
 from magnum.api.controllers import link
+from magnum.api.controllers.v1 import admin
 from magnum.api.controllers.v1 import bay
 from magnum.api.controllers.v1 import baymodel
 from magnum.api.controllers.v1 import certificate
@@ -91,6 +92,9 @@ class V1(controllers_base.APIBase):
     mservices = [link.Link]
     """Links to the magnum-services resource"""
 
+    admin = [link.Link]
+    """Links to the admin resource"""
+
     @staticmethod
     def convert():
         v1 = V1()
@@ -141,6 +145,12 @@ class V1(controllers_base.APIBase):
                                             pecan.request.host_url,
                                             'mservices', '',
                                             bookmark=True)]
+        v1.admin = [link.Link.make_link('self', pecan.request.host_url,
+                                        'admin', ''),
+                    link.Link.make_link('bookmark',
+                                        pecan.request.host_url,
+                                        'admin', '',
+                                        bookmark=True)]
         return v1
 
 
@@ -153,6 +163,7 @@ class Controller(controllers_base.Controller):
     clustertemplates = cluster_template.ClusterTemplatesController()
     certificates = certificate.CertificateController()
     mservices = magnum_services.MagnumServiceController()
+    admin = admin.AdminController()
 
     @expose.expose(V1)
     def get(self):

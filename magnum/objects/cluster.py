@@ -174,6 +174,15 @@ class Cluster(base.MagnumPersistentObject, base.MagnumObject,
                                                  filters=filters)
         return Cluster._from_db_object_list(db_clusters, cls, context)
 
+    @base.remotable_classmethod
+    def get_stats(cls, context, project_id=None):
+        """Return a list of Cluster objects.
+
+        :param context: Security context.
+        :param project_id: project id
+        """
+        return cls.dbapi.get_cluster_stats(context, project_id)
+
     @base.remotable
     def create(self, context=None):
         """Create a Cluster record in the DB.

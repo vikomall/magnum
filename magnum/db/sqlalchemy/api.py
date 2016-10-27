@@ -20,6 +20,7 @@ from oslo_db.sqlalchemy import utils as db_utils
 from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
+from sqlalchemy import func
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -189,6 +190,17 @@ class Connection(api.Connection):
             return query.one()
         except NoResultFound:
             raise exception.ClusterNotFound(cluster=cluster_uuid)
+
+    def get_cluster_stats(self, context, project_id=None):
+        query = model_query(models.Cluster)
+        if project_id:
+            query = query.filter_by(project_id=project_id)
+
+        clusters = query.count()
+        node_count_func = func.sum(models.Cluster.node_count)
+        query = query.session.query(node_count_func.label("total_nodecount"))
+        nodes = int(query.one()[0]) if len(query.one()) > 0 else 0
+        return clusters, nodes
 
     def destroy_cluster(self, cluster_id):
         session = get_session()
